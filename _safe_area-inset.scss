@@ -1,0 +1,30 @@
+$safe-top-const:    constant(safe-area-inset-top);
+$safe-right-const:  constant(safe-area-inset-right);
+$safe-bottom-const: constant(safe-area-inset-bottom);
+$safe-left-const:   constant(safe-area-inset-left);
+
+$safe-top-env:           env(safe-area-inset-top);
+$safe-right-env:         env(safe-area-inset-right);
+$safe-bottom-env:        env(safe-area-inset-bottom);
+$safe-left-env:          env(safe-area-inset-left);
+
+// Output one of the constant() and env() safe area from above.
+@function safe-area ($dir, $env: env) {
+
+  $dirs: (
+    'top': true,
+    'right': true,
+    'bottom': true,
+    'left': true
+  );
+
+  @if(not map-get($dirs, $dir)) {
+    @error "You mispelled top, right, bottom or left."
+  }
+
+  @if($env != env and $env != constant) {
+    $env: env;
+  }
+
+  @return #{$env}#{unquote("(safe-area-inset-#{$dir})")};
+}

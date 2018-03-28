@@ -1,0 +1,134 @@
+
+/* IPHONE X NOTCH (require bourbon ^5.0.0-beta.8)
+
+Three ways to use it:
+
+- As an at-rule {}:
+
+    @include i-notch() {
+      // CSS
+    }
+
+- As a setter (prop, value):
+
+    `@include i-notch(font-size, left);` // font-size will receive left safe area size
+
+- As a setter (prop, edge values):
+
+    `@include i-notch(margin, true true null true);` (border-radius, border-width, margin, padding, position)
+
+Roadmap:
+
+  0. Support of @supports() {}.
+
+     See commented part at the bottom of the mixin.
+
+  1. @include i-notch(margin, bottom bottom null left):
+
+     Direction keywords (instead of a bool) to apply bottom safe size on `margin-right`.
+
+  2. @include i-notch(position, null right+4rem bottom-3px null):
+
+     Output `calc(env(safe-area-inset-right) + 4rem)`.
+
+  3. @include i-notch(transform, rotate(top)) :
+
+     Support of transform: `rotate(env(safe-area-inset-right)deg)`.
+
+  4. Combination of previous.
+
+*/
+
+@mixin i-notch($prop: null, $value: null) {
+  $parent_is_html: (inspect(nth(&, 1))) == html; // (bool) https://github.com/sass/libsass/issues/2018
+
+  // No parameter: @include i-notch() { @content }
+  @if($prop == null) {
+
+    @if($parent_is_html) {
+      &.iphone-x--notched { @content; }
+    } @else {
+      .iphone-x--notched & { @content; }
+    }
+  } @else {
+
+    $props-with-edges: (
+      'border-radius': true,
+      'border-width': true,
+      'margin': true,
+      'padding': true,
+      'position': true,
+    );
+
+    // Properties not from the list above
+    @if(not map-get($props-with-edges, $prop)) {
+
+      .iphone-x--notched & {
+        #{$prop}: safe-area($value, constant);
+        #{$prop}: safe-area($value);
+      }
+
+    // Properties from the list
+    } @else {
+      $value: _unpack-shorthand($value);
+
+      $offsets: (
+        top:    nth($value, 1),
+        right:  nth($value, 2),
+        bottom: nth($value, 3),
+        left:   nth($value, 4),
+      );
+
+      // position
+      @if($prop == position) {
+
+        .iphone-x--notched & {
+          @each $offset, $val in $offsets {
+            @if ($val != null) {
+              #{$offset}: safe-area($offset, constant);
+              #{$offset}: safe-area($offset);
+            }
+          }
+        }
+
+      // border-radius, border-width, margin, padding
+      } @else {
+
+        .iphone-x--notched & {
+
+          @each $offset, $val in $offsets {
+
+            @if ($val != null) {
+
+              @if($prop == border-width or $prop == border-radius) {
+                $prop-suffix: if($prop == border-width, width, radius);
+                $off-suffix: '';
+                $off-prefix: '';
+                @if($prop == border-radius) {
+                  @if($offset == top) { $off-suffix: '-left'; }
+                  @if($offset == right) { $off-prefix: 'top-'; }
+                  @if($offset == bottom) { $off-suffix: '-right'; }
+                  @if($offset == left) { $off-prefix: 'bottom-'; }
+                }
+
+                border-#{$off-prefix}#{$offset}#{$off-suffix}-#{$prop-suffix}: safe-area($offset, constant);
+                border-#{$off-prefix}#{$offset}#{$off-suffix}-#{$prop-suffix}: safe-area($offset);
+              } @else {
+                #{$prop}-#{$offset}: safe-area($offset, constant);
+                #{$prop}-#{$offset}: safe-area($offset);
+              }
+
+              // // Can’t work (https://github.com/sass/libsass/issues/2452).
+              // @if(typeof($value) != bool ) {
+              //   @supports(#{$prop}-#{$offset}: unquote('max(0px)')) { // Cant use `constant()` or `env()` instead of `0px`: https://drafts.csswg.org/css-variables/#invalid-variables
+              //     #{$prop}-#{$offset}: unquote('max(constant(safe-area-inset#{$offset}), #{$value})');
+              //     #{$prop}-#{$offset}: unquote('max(env(safe-area-inset#{$offset}), #{$value})');
+              //   }
+              // }
+            }
+          }
+        }
+      }
+    }
+  }
+}
